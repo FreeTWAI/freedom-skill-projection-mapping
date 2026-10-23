@@ -42,3 +42,48 @@ class PlanValidation(unittest.TestCase):
 
     def test_non_object_is_rejected(self):
         self.assertTrue(module.validate([]))
+
+    def test_missing_title_is_rejected(self):
+        bad = self.sample()
+        bad.pop('title')
+        self.assertTrue(module.validate(bad))
+
+    def test_invalid_kind_is_rejected(self):
+        bad = self.sample()
+        bad['kind'] = 'wrong-kind'
+        self.assertTrue(module.validate(bad))
+
+    def test_invalid_surface_dimensions(self):
+        bad = self.sample()
+        bad['surfaces'][0]['width_mm'] = -100
+        self.assertTrue(module.validate(bad))
+
+    def test_missing_asset_rights_or_source(self):
+        bad = self.sample()
+        bad['assets'][0].pop('source', None)
+        self.assertTrue(module.validate(bad))
+
+    def test_invalid_asset_duration(self):
+        bad = self.sample()
+        bad['assets'][0]['duration_seconds'] = 0
+        self.assertTrue(module.validate(bad))
+
+    def test_invalid_cue_duration(self):
+        bad = self.sample()
+        bad['cues'][0]['duration_seconds'] = -1
+        self.assertTrue(module.validate(bad))
+
+    def test_missing_cue_operator_role_or_fallback(self):
+        bad = self.sample()
+        bad['cues'][0].pop('operator_role', None)
+        self.assertTrue(module.validate(bad))
+
+    def test_duplicate_surface_ids(self):
+        bad = self.sample()
+        bad['surfaces'].append(dict(bad['surfaces'][0]))
+        self.assertTrue(module.validate(bad))
+
+    def test_cue_invalid_surface_id(self):
+        bad = self.sample()
+        bad['cues'][0]['surface_id'] = 'missing-surface'
+        self.assertTrue(module.validate(bad))

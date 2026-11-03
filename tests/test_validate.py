@@ -87,3 +87,22 @@ class PlanValidation(unittest.TestCase):
         bad = self.sample()
         bad['cues'][0]['surface_id'] = 'missing-surface'
         self.assertTrue(module.validate(bad))
+
+    def test_sensitive_credential_exposure_rejected(self):
+        bad = self.sample()
+        bad['cues'][0]['password_test'] = "test"
+        self.assertTrue(module.validate(bad))
+
+    def test_text_length_limit(self):
+        bad = self.sample()
+        bad['assets'][0]['source'] = "a" * 1025
+        self.assertTrue(module.validate(bad))
+
+    def test_text_sanitization(self):
+        bad = self.sample()
+        bad['assets'][0]['source'] = "<script>alert(1)</script>"
+        self.assertTrue(module.validate(bad))
+
+        bad2 = self.sample()
+        bad2['assets'][0]['source'] = "javascript:alert(1)"
+        self.assertTrue(module.validate(bad2))

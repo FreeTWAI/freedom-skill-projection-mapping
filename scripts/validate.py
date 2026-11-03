@@ -4,6 +4,17 @@ import sys
 from pathlib import Path
 
 
+def check_credentials(data, errors):
+    sensitive_terms = {"password", "secret", "token", "credential"}
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if any(term in k.lower() for term in sensitive_terms):
+                errors.append("sensitive key exposure detected")
+            check_credentials(v, errors)
+    elif isinstance(data, list):
+        for item in data:
+            check_credentials(item, errors)
+
 def validate(data):
     errors = []
     if not isinstance(data, dict):
@@ -16,6 +27,7 @@ def validate(data):
     if data.get("kind") != expected_kind:
         errors.append("kind must be " + expected_kind)
     check(data, errors)
+    check_credentials(data, errors)
     return errors
 
 
@@ -42,7 +54,14 @@ def unique_ids(items, label, errors):
 
 
 def text(value):
-    return isinstance(value, str) and bool(value.strip())
+    if not isinstance(value, str):
+        return False
+    value_lower = value.lower()
+    if "<script>" in value_lower or "javascript:" in value_lower:
+        return False
+    if len(value) > 1024:
+        return False
+    return bool(value.strip())
 
 
 def check(data, errors):

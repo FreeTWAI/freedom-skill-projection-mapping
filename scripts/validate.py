@@ -20,50 +20,70 @@ def validate(data):
 
 
 def number(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return type(value) is int or type(value) is float
 
 
 def records(data, key, errors):
     value = data.get(key)
-    if not isinstance(value, list) or not value or not all(isinstance(item, dict) for item in value):
+    if type(value) is not list or not value:
         errors.append(key + " must contain at least one object")
         return []
+    for item in value:
+        if type(item) is not dict:
+            errors.append(key + " must contain at least one object")
+            return []
     return value
 
 
 def unique_ids(items, label, errors):
-    identifiers = [item.get("id") for item in items]
-    if any(not isinstance(value, str) or not value.strip() for value in identifiers):
-        errors.append(label + " ids must be nonempty strings")
+    identifiers = set()
+    has_type_error = False
+    has_dup_error = False
+    for item in items:
+        val = item.get("id")
+        if type(val) is not str or not val.strip():
+            if not has_type_error:
+                errors.append(label + " ids must be nonempty strings")
+                has_type_error = True
+        else:
+            if val in identifiers and not has_dup_error:
+                errors.append(label + " ids must be unique")
+                has_dup_error = True
+            identifiers.add(val)
+    if has_type_error:
         return set()
-    if len(set(identifiers)) != len(identifiers):
-        errors.append(label + " ids must be unique")
-    return set(identifiers)
+    return identifiers
 
 
 def text(value):
-    return isinstance(value, str) and bool(value.strip())
+    return type(value) is str and bool(value.strip())
 
 
 def check(data, errors):
     surfaces = records(data, "surfaces", errors)
     surface_ids = unique_ids(surfaces, "surface", errors)
     for surface in surfaces:
-        if any(not number(surface.get(key)) or surface[key] <= 0 for key in ("width_mm", "height_mm")):
+        w = surface.get("width_mm")
+        h = surface.get("height_mm")
+        if not (type(w) is int or type(w) is float) or w <= 0 or not (type(h) is int or type(h) is float) or h <= 0:
             errors.append("surface dimensions must be positive millimetres")
+
     assets = records(data, "assets", errors)
     asset_ids = unique_ids(assets, "asset", errors)
     for asset in assets:
         if not text(asset.get("source")) or not text(asset.get("rights")):
             errors.append("each asset needs a source and rights note")
-        if not number(asset.get("duration_seconds")) or asset["duration_seconds"] <= 0:
+        duration = asset.get("duration_seconds")
+        if not (type(duration) is int or type(duration) is float) or duration <= 0:
             errors.append("asset duration must be positive")
+
     cues = records(data, "cues", errors)
     unique_ids(cues, "cue", errors)
     for cue in cues:
         if cue.get("surface_id") not in surface_ids or cue.get("asset_id") not in asset_ids:
             errors.append("cue must reference a listed surface and asset")
-        if not number(cue.get("duration_seconds")) or cue["duration_seconds"] <= 0:
+        duration = cue.get("duration_seconds")
+        if not (type(duration) is int or type(duration) is float) or duration <= 0:
             errors.append("cue duration must be positive")
         if not text(cue.get("operator_role")) or not text(cue.get("fallback")):
             errors.append("each cue needs an operator role and fallback")
